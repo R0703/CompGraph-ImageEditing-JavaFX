@@ -7,11 +7,15 @@ import java.io.IOException;
 import javax.imageio.ImageIO;
 
 import javafx.embed.swing.SwingFXUtils;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
@@ -25,35 +29,68 @@ public class UploadPage {
 	HBox hb1;
 	ImageView beforeIV;
 	ImageView afterIV;
-//	private ImageView imageView = new ImageView();
+
 	private BufferedImage bufferedImage;
+	Button newScreenBtn;
 	
 	
 	public UploadPage(Stage stage) {
 		this.stage = stage;
 		
-        Button openButton = new Button("Open Image");
-        openButton.setOnAction(e -> openImage(stage));
-
+		Label titleLbl = new Label("Upload and Transform Your Image");
+		titleLbl.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+		
+		
+		//======OPEN IMAGE======
+		Label chooseImageLabel = new Label("Choose an image:");
+		chooseImageLabel.setAlignment(Pos.CENTER_LEFT);
+	    TextField filePathField = new TextField("No file selected.");
+	    filePathField.setEditable(false);
+        Button openButton = new Button("Browse...");
+        openButton.setOnAction(e -> openImage(stage, filePathField, beforeIV, afterIV));
+        
+        HBox fileChooserBox = new HBox(10, openButton, filePathField);
+        fileChooserBox.setAlignment(Pos.CENTER_LEFT);
+        
+        //======CHOOSE FILTER======
+        Label chooseOptionLabel = new Label("Choose an option:");
         ComboBox<String> filterOptions = new ComboBox<>();
         filterOptions.getItems().addAll("Grayscale", "Blur");
         filterOptions.setValue("Grayscale");
+        VBox optionsBox = new VBox(10, chooseOptionLabel, filterOptions);
+        optionsBox.setAlignment(Pos.CENTER_LEFT);
 
-        Button applyButton = new Button("Apply Filter");
+        Button applyButton = new Button("Convert Image");
         applyButton.setOnAction(e -> applyFilter(filterOptions.getValue()));
+        applyButton.setStyle("-fx-background-color: #007BFF; -fx-text-fill: white; -fx-font-size: 14px; "
+                + "-fx-padding: 10px 20px; -fx-border-radius: 5; -fx-background-radius: 5;");
         
-        //display before after img dikasih filter
+        //======DISPLAY BEFORE AFTER======
         beforeIV = new ImageView();
         afterIV = new ImageView();
         setFixedImageSize(beforeIV);
         setFixedImageSize(afterIV);
         hb1 = new HBox(10, beforeIV, afterIV);
         hb1.setStyle("-fx-alignment: center;");
-//        setFixedImageSize(imageView);
+        
+        //======CONTAINER======
+        VBox formBox = new VBox(15, chooseImageLabel, fileChooserBox, chooseOptionLabel, filterOptions, applyButton);
+        formBox.setPadding(new Insets(20));
+        formBox.setStyle("-fx-background-color: #F8F9FA; -fx-border-color: #ddd; -fx-border-radius: 10; -fx-background-radius: 10;");
+        formBox.setAlignment(Pos.CENTER);
+        formBox.setPrefWidth(550);
+        formBox.setMaxWidth(550);
 
-        // Layout
-        VBox root = new VBox(10, openButton, filterOptions, applyButton, hb1);
+        // Root Layout
+        newScreenBtn = new Button("Open in new Window");
+        VBox root = new VBox(20, titleLbl, formBox, hb1, newScreenBtn);
+        root.setPadding(new Insets(30));
+        root.setAlignment(Pos.TOP_CENTER);
         root.setStyle("-fx-padding: 10; -fx-alignment: center;");
+        
+        newScreenBtn.setOnAction(e->{
+        	new FullPage(stage);
+        });
         
 		stage.setTitle("Image Editing App");
 		scene = new Scene(root, 600, 600);
@@ -61,20 +98,28 @@ public class UploadPage {
 		stage.show();
 	}
 	
-	private void openImage(Stage stage) {
+	private void openImage(Stage stage, TextField filePathField, ImageView beforeIV, ImageView afterIV) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.getExtensionFilters().add(
                 new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.bmp"));
-        File file = fileChooser.showOpenDialog(stage);
+        File selectedFile = fileChooser.showOpenDialog(stage);
 
-        if (file != null) {
+        if (selectedFile != null) {
             try {
-                bufferedImage = ImageIO.read(file);
-                Image image = SwingFXUtils.toFXImage(bufferedImage, null);
+                // Update the file path in the TextField
+                filePathField.setText(selectedFile.getName());
 
-               //display before dikasih filter
+                // Read and store the image in the class-level bufferedImage
+                bufferedImage = ImageIO.read(selectedFile);
+
+                // Convert the bufferedImage to an FX image and display it in beforeIV
+                Image image = SwingFXUtils.toFXImage(bufferedImage, null);
                 beforeIV.setImage(image);
-                afterIV.setImage(null); 
+                beforeIV.setFitWidth(300); // Set fixed width
+                beforeIV.setPreserveRatio(true);
+
+                // Clear the afterIV for now
+                afterIV.setImage(null);
             } catch (IOException ex) {
                 showError("Error loading image: " + ex.getMessage());
             }
@@ -106,9 +151,10 @@ public class UploadPage {
         }
 
         Image fxImage = SwingFXUtils.toFXImage(newImage, null);
+        afterIV.setImage(fxImage);
 
         //display after dikasih filter
-        afterIV.setImage(fxImage);
+        bufferedImage = newImage;
     }
 
     private BufferedImage applyGrayscale(BufferedImage image) {
